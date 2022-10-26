@@ -1,3 +1,5 @@
+from cgi import print_directory
+from ctypes import wstring_at
 import os
 import sys
 from sys import platform
@@ -142,9 +144,11 @@ tot_roads = []
 def node_to_intersection(node,tls_dict,edge_dict):
     node_type = node.getType()
     node_coord = node.getCoord()
+    node_x = node_coord[0]
+    node_y = node_coord[1]
     intersection = {
         "id": node.getID(),
-        "point": {"x": node_coord[0], "y": node_coord[1]},
+        "point": {"x": node_x, "y": node_y},
         "width": 0,
         "roads": [edge.getID() for edge in node.getIncoming() + node.getOutgoing()],
         "roadLinks": [],
@@ -216,36 +220,92 @@ def node_to_intersection(node,tls_dict,edge_dict):
         for connec in tls_dict[nodeid]._connections:
             G_to_lane_dict[connec[-1]] = connec[0].getID()
 
+
         turn_right_index_list = []
-        for index, roadlink in enumerate(roadLinks):
-            if (roadlink["type"] == "turn_right"):
+        for index, roadLink in enumerate(roadLinks):
+            if (roadLink["type"] == "turn_right"):
                 turn_right_index_list += [index]
             
-        ew_turn_left_index_list = []
-        sn_turn_left_index_list = []
-        for index, roadlink in enumerate(roadLinks):
-            if (roadlink["type"] == "turn_left"):
-                x_diff = roadlink["laneLinks"][0]["points"][0]["x"] - roadlink["laneLinks"][0]["points"][1]["x"]
-                y_diff = roadlink["laneLinks"][0]["points"][0]["y"] - roadlink["laneLinks"][0]["points"][1]["y"]
+        ewwe_turn_left_index_list = []
+        snns_turn_left_index_list = []
+        for index, roadLink in enumerate(roadLinks):
+            if (roadLink["type"] == "turn_left"):
+                x_diff = roadLink["laneLinks"][0]["points"][0]["x"] - roadLink["laneLinks"][0]["points"][1]["x"]
+                y_diff = roadLink["laneLinks"][0]["points"][0]["y"] - roadLink["laneLinks"][0]["points"][1]["y"]
                 if (x_diff * y_diff > 0):
-                    ew_turn_left_index_list += [index]
+                    ewwe_turn_left_index_list += [index]
                 else:
-                    sn_turn_left_index_list += [index]
+                    snns_turn_left_index_list += [index]
 
-        ew_index_list = []
-        sn_index_list = []
-        for index, roadlink in enumerate(roadLinks):
-            if (roadlink["type"] == "go_straight"):
-                x_diff = abs(roadlink["laneLinks"][0]["points"][0]["x"] - roadlink["laneLinks"][0]["points"][1]["x"])
-                y_diff = abs(roadlink["laneLinks"][0]["points"][0]["y"] - roadlink["laneLinks"][0]["points"][1]["y"])
+        ewwe_straight_index_list = []
+        snns_straight_index_list = []
+        for index, roadLink in enumerate(roadLinks):
+            if (roadLink["type"] == "go_straight"):
+                x_diff = abs(roadLink["laneLinks"][0]["points"][0]["x"] - roadLink["laneLinks"][0]["points"][1]["x"])
+                y_diff = abs(roadLink["laneLinks"][0]["points"][0]["y"] - roadLink["laneLinks"][0]["points"][1]["y"])
                 if (x_diff > y_diff):
-                    ew_index_list += [index]
+                    ewwe_straight_index_list += [index]
                 else:
+                    snns_straight_index_list += [index]
+
+        we_index_list = []
+        ew_index_list = []
+        ns_index_list = []
+        sn_index_list = []
+        for index, roadLink in enumerate(roadLinks):
+            x_diff = roadLink["laneLinks"][0]["points"][1]["x"] - roadLink["laneLinks"][0]["points"][0]["x"]
+            y_diff = roadLink["laneLinks"][0]["points"][1]["y"] - roadLink["laneLinks"][0]["points"][0]["y"]
+            if (roadLink["type"] == "go_straight"):
+                if abs(x_diff) > abs(y_diff):
+                    if x_diff > 0:
+                        we_index_list += [index]
+                    else:
+                        ew_index_list += [index]
+                else:
+                    if y_diff > 0:
+                        sn_index_list += [index]
+                    else:
+                        ns_index_list += [index]
+            elif (roadLink["type"] == "turn_left"):
+                if (x_diff > 0 and y_diff > 0):
+                    we_index_list += [index]
+                elif (x_diff > 0 and y_diff < 0):
+                    ns_index_list += [index]
+                elif (x_diff < 0 and y_diff > 0):
                     sn_index_list += [index]
+                else:
+                    ew_index_list += [index]
+
 
         phase_dict = {
             'availableRoadLinks': list(set(turn_right_index_list)),
             'time': 5
+        }
+        all_phase.append(phase_dict)
+        phase_dict = {
+            'availableRoadLinks': list(set(ewwe_straight_index_list + turn_right_index_list)),
+            'time': 30
+        }
+        all_phase.append(phase_dict)
+        phase_dict = {
+            'availableRoadLinks': list(set(snns_straight_index_list + turn_right_index_list)),
+            'time': 30
+        }
+        all_phase.append(phase_dict)
+        phase_dict = {
+            'availableRoadLinks': list(set(ewwe_turn_left_index_list + turn_right_index_list)),
+            'time': 30
+        }
+        all_phase.append(phase_dict)
+        phase_dict = {
+            'availableRoadLinks': list(set(snns_turn_left_index_list + turn_right_index_list)),
+            'time': 30
+        }
+        all_phase.append(phase_dict)
+        
+        phase_dict = {
+            'availableRoadLinks': list(set(we_index_list + turn_right_index_list)),
+            'time': 30
         }
         all_phase.append(phase_dict)
         phase_dict = {
@@ -254,17 +314,12 @@ def node_to_intersection(node,tls_dict,edge_dict):
         }
         all_phase.append(phase_dict)
         phase_dict = {
+            'availableRoadLinks': list(set(ns_index_list + turn_right_index_list)),
+            'time': 30
+        }
+        all_phase.append(phase_dict)
+        phase_dict = {
             'availableRoadLinks': list(set(sn_index_list + turn_right_index_list)),
-            'time': 30
-        }
-        all_phase.append(phase_dict)
-        phase_dict = {
-            'availableRoadLinks': list(set(ew_turn_left_index_list + turn_right_index_list)),
-            'time': 30
-        }
-        all_phase.append(phase_dict)
-        phase_dict = {
-            'availableRoadLinks': list(set(sn_turn_left_index_list + turn_right_index_list)),
             'time': 30
         }
         all_phase.append(phase_dict)
@@ -299,7 +354,8 @@ def get_final_intersections(net,tls_dict,edge_dict):
         if (intersection["roads"] != []):
             if (intersection["roadLinks"] == [] \
                 or intersection["trafficLight"]["roadLinkIndices"] == [] \
-                or len(intersection["trafficLight"]["roadLinkIndices"]) <= 1):
+                or len(intersection["trafficLight"]["roadLinkIndices"]) <= 1 \
+                or len(intersection["trafficLight"]["lightphases"]) != 9):
                 intersection["virtual"] = bool(1)
             final_intersections.append(intersection)
 

@@ -1,4 +1,4 @@
 #/bin/bash
 export SUMO_HOME=/usr/share/sumo
-netconvert --osm-files map.osm -o map.net.xml --geometry.remove --tls.guess-signals --tls.discard-simple --tls.join --tls.default-type actuated
+netconvert --osm-files map.osm -o map.net.xml --geometry.remove --tls.discard-simple --tls.default-type actuated
 python converter.py --sumonet map.net.xml --cityflownet map_cityflow.json
